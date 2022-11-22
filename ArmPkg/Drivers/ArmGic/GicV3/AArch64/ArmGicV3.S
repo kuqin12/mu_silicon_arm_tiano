@@ -23,6 +23,7 @@
 #define ICC_IAR1_EL1            S3_0_C12_C12_0
 #define ICC_PMR_EL1             S3_0_C4_C6_0
 #define ICC_BPR1_EL1            S3_0_C12_C12_3
+#define ICC_SGI1R		S3_0_C12_C11_5
 
 #endif
 
@@ -39,6 +40,14 @@ ASM_FUNC(ArmGicV3GetControlSystemRegisterEnable)
         b       4f
 3:  mrs x0, ICC_SRE_EL3
 4:  ret
+
+// VOID
+// ArmGicV3SendNsG1Sgi (
+//  IN UINT64          SgiVal
+//  );
+ASM_FUNC(ArmGicV3SendNsG1Sgi)
+        msr     ICC_SGI1R, x0
+        ret
 
 //VOID
 //EFIAPI
