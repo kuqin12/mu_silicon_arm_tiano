@@ -23,7 +23,7 @@
 #define ICC_IAR1_EL1            S3_0_C12_C12_0
 #define ICC_PMR_EL1             S3_0_C4_C6_0
 #define ICC_BPR1_EL1            S3_0_C12_C12_3
-#define ICC_SGI1R		S3_0_C12_C11_5
+#define ICC_SGI1R               S3_0_C12_C11_5
 
 #endif
 
