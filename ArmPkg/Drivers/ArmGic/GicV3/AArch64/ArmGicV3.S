@@ -46,7 +46,9 @@ ASM_FUNC(ArmGicV3GetControlSystemRegisterEnable)
 //  IN UINT64          SgiVal
 //  );
 ASM_FUNC(ArmGicV3SendNsG1Sgi)
+        dsb     ishst
         msr     ICC_SGI1R, x0
+        isb
         ret
 
 //VOID
