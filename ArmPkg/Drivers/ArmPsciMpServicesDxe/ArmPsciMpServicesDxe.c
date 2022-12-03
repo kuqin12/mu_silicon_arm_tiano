@@ -734,10 +734,10 @@ StartupThisAP (
 
   // MU_CHANGE: Set the timer anyway, otherwise this AP is spent on this boot if the AP routine timeout.
   gBS->SetTimer (
-          CpuData->CheckThisAPEvent,
-          TimerPeriodic,
-          POLL_INTERVAL_US
-          );
+         CpuData->CheckThisAPEvent,
+         TimerPeriodic,
+         POLL_INTERVAL_US
+         );
 
   // Blocking
   while (TRUE) {
@@ -1043,6 +1043,11 @@ UpdateApStatus (
   CPU_AP_DATA  *NextCpuData;
   CPU_STATE    State;
   UINTN        NextNumber;
+
+  if (ProcessorIndex >= mCpuMpData.NumberOfProcessors) {
+    // Reject request if index is out of boundary
+    return;
+  }
 
   CpuData = &mCpuMpData.CpuData[ProcessorIndex];
 
@@ -1388,20 +1393,6 @@ ArmPsciMpServicesDxeInitialize (
   MaxCpus = 1;
 
   DEBUG ((DEBUG_INFO, "Starting MP services\n"));
-
-  Status = gBS->HandleProtocol (
-                  ImageHandle,
-                  &gEfiLoadedImageProtocolGuid,
-                  (VOID **)&Image
-                  );
-  ASSERT_EFI_ERROR (Status);
-
-  //
-  // Parts of the code in this driver may be executed by other cores running
-  // with the MMU off so we need to ensure that everything is clean to the
-  // point of coherency (PoC)
-  //
-  WriteBackDataCacheRange (Image->ImageBase, Image->ImageSize);
 
   Status = gBS->HandleProtocol (
                   ImageHandle,
