@@ -732,12 +732,14 @@ StartupThisAP (
     return EFI_SUCCESS;
   }
 
-  // MU_CHANGE: Set the timer anyway, otherwise this AP is spent on this boot if the AP routine timeout.
-  gBS->SetTimer (
+  // MU_CHANGE: If any timeout specified, set the timer anyway. Otherwise this AP is spent on this boot if the AP routine timeout.
+  if (TimeoutInMicroseconds != 0) {
+    gBS->SetTimer (
          CpuData->CheckThisAPEvent,
          TimerPeriodic,
          POLL_INTERVAL_US
          );
+  }
 
   // Blocking
   while (TRUE) {
