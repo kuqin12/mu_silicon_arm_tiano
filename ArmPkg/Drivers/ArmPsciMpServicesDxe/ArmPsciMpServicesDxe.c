@@ -708,6 +708,7 @@ StartupThisAP (
 
   mCpuMpData.StartCount  = 1;
   mCpuMpData.FinishCount = 0;
+  CpuData->Timeout = Timeout;
 
   SetApProcedure (
     CpuData,
@@ -1178,7 +1179,7 @@ CheckThisAPStatus (
     CpuData->State = CpuStateIdle;
   }
 
-  if (CpuData->TimeTaken > CpuData->Timeout) {
+  if ((CpuData->Timeout != 0) && (CpuData->TimeTaken > CpuData->Timeout)) {
     if (mCpuMpData.WaitEvent != NULL) {
       Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
       ASSERT_EFI_ERROR (Status);
