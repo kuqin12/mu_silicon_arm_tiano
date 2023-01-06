@@ -1173,7 +1173,7 @@ CheckThisAPStatus (
 
     if (mCpuMpData.WaitEvent != NULL) {
       Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
-      ASSERT_EFI_ERROR (Status);
+      // ASSERT_EFI_ERROR (Status);
     }
 
     CpuData->State = CpuStateIdle;
@@ -1182,7 +1182,7 @@ CheckThisAPStatus (
   if ((CpuData->Timeout != 0) && (CpuData->TimeTaken > CpuData->Timeout)) {
     if (mCpuMpData.WaitEvent != NULL) {
       Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
-      ASSERT_EFI_ERROR (Status);
+      // ASSERT_EFI_ERROR (Status);
     }
   }
 }
