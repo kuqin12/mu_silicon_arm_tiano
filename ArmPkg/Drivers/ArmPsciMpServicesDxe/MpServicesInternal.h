@@ -26,9 +26,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 //
 // AP state
 //
-// The state transitions for an AP when it process a procedure are:
-//  Idle ----> Ready ----> Busy ----> Idle
-//       [BSP]       [AP]       [AP]
+// The state transitions for an AP when it processes a procedure are:
+//  Idle ----> Ready ----> Busy ----> Finished ----> Idle
+//       [BSP]       [BSP]      [AP]           [BSP]
 //
 typedef enum {
   CpuStateIdle,
@@ -48,8 +48,6 @@ typedef struct {
   VOID                         *Parameter;
   CPU_STATE                    State;
   EFI_EVENT                    CheckThisAPEvent;
-  UINTN                        Timeout;
-  UINTN                        TimeTaken;
   VOID                         *Ttbr0;
   UINTN                        Tcr;
   UINTN                        Mair;
@@ -71,9 +69,11 @@ typedef struct {
   UINTN               StartedNumber;
   CPU_AP_DATA         *CpuData;
   UINTN               Timeout;
+  UINTN               TimeTaken;
   UINTN               *FailedList;
   UINTN               FailedListIndex;
   BOOLEAN             TimeoutActive;
+  BOOLEAN             *SingleApFinished;
 } CPU_MP_DATA;
 
 /** Secondary core entry point.
@@ -197,17 +197,6 @@ CalculateAndStallInterval (
   IN UINTN  Timeout
   );
 
-/** Returns whether all processors are in the idle state.
-
-   @return Whether all the processors are idle.
-
-**/
-STATIC
-BOOLEAN
-CheckAllCpusReady (
-  VOID
-  );
-
 /** Sets up the state for the StartupAllAPs function.
 
    @param SingleThread Whether the APs will execute sequentially.
@@ -221,12 +210,14 @@ StartupAllAPsPrepareState (
 
 /** Handles execution of StartupAllAPs when a WaitEvent has been specified.
 
-   @param Procedure         The user-supplied procedure.
-   @param ProcedureArgument The user-supplied procedure argument.
-   @param WaitEvent         The wait event to be signaled when the work is
-                            complete or a timeout has occurred.
-   @param TimeoutInMicroseconds The timeout for the work to be completed. Zero
-                                indicates an infinite timeout.
+  @param Procedure         The user-supplied procedure.
+  @param ProcedureArgument The user-supplied procedure argument.
+  @param WaitEvent         The wait event to be signaled when the work is
+                           complete or a timeout has occurred.
+  @param TimeoutInMicroseconds The timeout for the work to be completed. Zero
+                               indicates an infinite timeout.
+  @param SingleThread          Whether the APs will execute sequentially.
+  @param FailedCpuList         User-supplied pointer for list of failed CPUs.
 
    @return EFI_SUCCESS on success.
 **/
@@ -236,7 +227,9 @@ StartupAllAPsWithWaitEvent (
   IN EFI_AP_PROCEDURE  Procedure,
   IN VOID              *ProcedureArgument,
   IN EFI_EVENT         WaitEvent,
-  IN UINTN             TimeoutInMicroseconds
+  IN UINTN             TimeoutInMicroseconds,
+  IN BOOLEAN           SingleThread,
+  IN UINTN             **FailedCpuList
   );
 
 /** Handles execution of StartupAllAPs when no wait event has been specified.

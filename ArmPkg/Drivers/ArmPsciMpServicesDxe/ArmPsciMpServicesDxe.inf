@@ -34,6 +34,7 @@
   ArmSmcLib
   BaseMemoryLib
   CacheMaintenanceLib
+  CpuExceptionHandlerLib
   DebugLib
   HobLib
   MemoryAllocationLib
