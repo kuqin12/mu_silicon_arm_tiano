@@ -39,12 +39,12 @@
 #include <Library/ArmSmcLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/CacheMaintenanceLib.h>
+#include <Library/CpuExceptionHandlerLib.h>
 #include <Library/DebugLib.h>
 #include <Library/HobLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
-
 #include <IndustryStandard/ArmStdSmc.h>
 #include <Ppi/ArmMpCoreInfo.h>
 #include <Protocol/LoadedImage.h>
@@ -52,10 +52,6 @@
 #include "MpServicesInternal.h"
 
 #define POLL_INTERVAL_US  50000
-
-#define GET_MPIDR_AFFINITY_BITS(x)  ((x) & 0xFF00FFFFFF)
-
-#define MPIDR_MT_BIT  BIT24
 
 STATIC CPU_MP_DATA  mCpuMpData;
 STATIC BOOLEAN      mNonBlockingModeAllowed;
@@ -526,12 +522,8 @@ StartupAllAPs (
     return EFI_UNSUPPORTED;
   }
 
-  if (!CheckAllCpusReady ()) {
-    return EFI_NOT_READY;
-  }
-
   if (FailedCpuList != NULL) {
-    mCpuMpData.FailedList = AllocatePool (
+    mCpuMpData.FailedList = AllocateZeroPool (
                               (mCpuMpData.NumberOfProcessors + 1) *
                               sizeof (UINTN)
                               );
@@ -556,8 +548,17 @@ StartupAllAPs (
                Procedure,
                ProcedureArgument,
                WaitEvent,
-               TimeoutInMicroseconds
+               TimeoutInMicroseconds,
+               SingleThread,
+               FailedCpuList
                );
+
+    if (EFI_ERROR (Status) && (FailedCpuList != NULL)) {
+      if (mCpuMpData.FailedListIndex == 0) {
+        FreePool (*FailedCpuList);
+        *FailedCpuList = NULL;
+      }
+    }
   } else {
     Status = StartupAllAPsNoWaitEvent (
                Procedure,
@@ -566,6 +567,13 @@ StartupAllAPs (
                SingleThread,
                FailedCpuList
                );
+
+    if (FailedCpuList != NULL) {
+      if (mCpuMpData.FailedListIndex == 0) {
+        FreePool (*FailedCpuList);
+        *FailedCpuList = NULL;
+      }
+    }
   }
 
   return Status;
@@ -977,7 +985,11 @@ AddProcessorToFailedList (
 
   Found = FALSE;
 
-  if (ApState == CpuStateIdle) {
+  if ((mCpuMpData.FailedList == NULL) ||
+      (ApState == CpuStateIdle) ||
+      (ApState == CpuStateFinished) ||
+      IsProcessorBSP (ProcessorIndex))
+  {
     return;
   }
 
@@ -991,7 +1003,7 @@ AddProcessorToFailedList (
 
   /* If the CPU isn't already in the FailedList, add it */
   if (!Found) {
-    mCpuMpData.FailedList[mCpuMpData.FailedListIndex++] = Index;
+    mCpuMpData.FailedList[mCpuMpData.FailedListIndex++] = ProcessorIndex;
   }
 }
 
@@ -1077,6 +1089,13 @@ UpdateApStatus (
             mCpuMpData.Procedure,
             mCpuMpData.ProcedureArgument
             );
+
+          Status = DispatchCpu (NextNumber);
+          if (!EFI_ERROR (Status)) {
+            mCpuMpData.StartCount++;
+          } else {
+            AddProcessorToFailedList (NextNumber, NextCpuData->State);
+          }
         }
       }
 
@@ -1106,15 +1125,13 @@ CheckAllAPsStatus (
 {
   UINTN  Index;
 
-  if (mCpuMpData.TimeoutActive) {
-    mCpuMpData.Timeout -= CalculateAndStallInterval (mCpuMpData.Timeout);
-  }
+  mCpuMpData.TimeTaken += POLL_INTERVAL_US;
 
   for (Index = 0; Index < mCpuMpData.NumberOfProcessors; Index++) {
     UpdateApStatus (Index);
   }
 
-  if (mCpuMpData.TimeoutActive && (mCpuMpData.Timeout == 0)) {
+  if (mCpuMpData.TimeoutActive && (mCpuMpData.TimeTaken > mCpuMpData.Timeout)) {
     ProcessStartupAllAPsTimeout ();
 
     // Force terminal exit
@@ -1133,8 +1150,9 @@ CheckAllAPsStatus (
 
   if (mCpuMpData.FailedListIndex == 0) {
     if (mCpuMpData.FailedList != NULL) {
-      FreePool (mCpuMpData.FailedList);
-      mCpuMpData.FailedList = NULL;
+      // Since we don't have the original `FailedCpuList`
+      // pointer here to set to NULL, don't free the
+      // memory.
     }
   }
 
@@ -1280,7 +1298,7 @@ MpServicesInitialize (
   }
 
   /* Allocate one extra for the sentinel entry at the end */
-  gProcessorIDs = AllocatePool ((mCpuMpData.NumberOfProcessors + 1) * sizeof (UINT64));
+  gProcessorIDs = AllocateZeroPool ((mCpuMpData.NumberOfProcessors + 1) * sizeof (UINT64));
   ASSERT (gProcessorIDs != NULL);
 
   Status = gBS->CreateEvent (
@@ -1334,6 +1352,8 @@ MpServicesInitialize (
     gProcessorIDs,
     (mCpuMpData.NumberOfProcessors + 1) * sizeof (UINT64)
     );
+
+  mNonBlockingModeAllowed = TRUE;
 
   Status = EfiCreateEventReadyToBootEx (
              TPL_CALLBACK,
@@ -1439,7 +1459,54 @@ ArmPsciMpServicesDxeInitialize (
                   NULL
                   );
   ASSERT_EFI_ERROR (Status);
+
   return Status;
+}
+
+/** AP exception handler.
+
+  @param InterruptType The AArch64 CPU exception type.
+  @param SystemContext System context.
+
+**/
+STATIC
+VOID
+EFIAPI
+ApExceptionHandler (
+  IN CONST EFI_EXCEPTION_TYPE  InterruptType,
+  IN CONST EFI_SYSTEM_CONTEXT  SystemContext
+  )
+{
+  ARM_SMC_ARGS  Args;
+  UINT64        Mpidr;
+  UINTN         Index;
+  UINTN         ProcessorIndex;
+
+  Mpidr = GET_MPIDR_AFFINITY_BITS (ArmReadMpidr ());
+
+  Index          = 0;
+  ProcessorIndex = MAX_UINT64;
+
+  do {
+    if (gProcessorIDs[Index] == Mpidr) {
+      ProcessorIndex = Index;
+      break;
+    }
+
+    Index++;
+  } while (gProcessorIDs[Index] != MAX_UINT64);
+
+  if (ProcessorIndex != MAX_UINT64) {
+    mCpuMpData.CpuData[ProcessorIndex].State = CpuStateFinished;
+    ArmDataMemoryBarrier ();
+  }
+
+  Args.Arg0 = ARM_SMC_ID_PSCI_CPU_OFF;
+  ArmCallSmc (&Args);
+
+  /* Should never be reached */
+  ASSERT (FALSE);
+  CpuDeadLoop ();
 }
 
 /** C entry-point for the AP.
@@ -1456,6 +1523,8 @@ ApProcedure (
   VOID              *UserApParameter;
   UINTN             ProcessorIndex;
 
+  ProcessorIndex = 0;
+
   WhoAmI (&mMpServicesProtocol, &ProcessorIndex);
 
   /* Fetch the user-supplied procedure and parameter to execute */
@@ -1471,6 +1540,12 @@ ApProcedure (
   ArmEnableInstructionCache ();
   ArmEnableDataCache ();
   ArmEnableMmu ();
+
+  InitializeCpuExceptionHandlers (NULL);
+  RegisterCpuInterruptHandler (EXCEPT_AARCH64_SYNCHRONOUS_EXCEPTIONS, ApExceptionHandler);
+  RegisterCpuInterruptHandler (EXCEPT_AARCH64_IRQ, ApExceptionHandler);
+  RegisterCpuInterruptHandler (EXCEPT_AARCH64_FIQ, ApExceptionHandler);
+  RegisterCpuInterruptHandler (EXCEPT_AARCH64_SERROR, ApExceptionHandler);
 
   UserApProcedure (UserApParameter);
 
@@ -1528,40 +1603,6 @@ IsProcessorEnabled (
   return (CpuInfo->StatusFlag & PROCESSOR_ENABLED_BIT) != 0;
 }
 
-/** Returns whether all processors are in the idle state.
-
-   @return Whether all the processors are idle.
-
-**/
-STATIC
-BOOLEAN
-CheckAllCpusReady (
-  VOID
-  )
-{
-  UINTN        Index;
-  CPU_AP_DATA  *CpuData;
-
-  for (Index = 0; Index < mCpuMpData.NumberOfProcessors; Index++) {
-    CpuData = &mCpuMpData.CpuData[Index];
-    if (IsProcessorBSP (Index)) {
-      // Skip BSP
-      continue;
-    }
-
-    if (!IsProcessorEnabled (Index)) {
-      // Skip Disabled processors
-      continue;
-    }
-
-    if (GetApState (CpuData) != CpuStateIdle) {
-      return FALSE;
-    }
-  }
-
-  return TRUE;
-}
-
 /** Sets up the state for the StartupAllAPs function.
 
    @param SingleThread Whether the APs will execute sequentially.
@@ -1608,7 +1649,6 @@ StartupAllAPsPrepareState (
       continue;
     }
 
-    ASSERT (GetApState (CpuData) == CpuStateIdle);
     CpuData->State = APInitialState;
 
     mCpuMpData.StartCount++;
@@ -1620,12 +1660,14 @@ StartupAllAPsPrepareState (
 
 /** Handles execution of StartupAllAPs when a WaitEvent has been specified.
 
-   @param Procedure         The user-supplied procedure.
-   @param ProcedureArgument The user-supplied procedure argument.
-   @param WaitEvent         The wait event to be signaled when the work is
-                            complete or a timeout has occurred.
-   @param TimeoutInMicroseconds The timeout for the work to be completed. Zero
-                                indicates an infinite timeout.
+  @param Procedure         The user-supplied procedure.
+  @param ProcedureArgument The user-supplied procedure argument.
+  @param WaitEvent         The wait event to be signaled when the work is
+                           complete or a timeout has occurred.
+  @param TimeoutInMicroseconds The timeout for the work to be completed. Zero
+                               indicates an infinite timeout.
+  @param SingleThread          Whether the APs will execute sequentially.
+  @param FailedCpuList         User-supplied pointer for list of failed CPUs.
 
    @return EFI_SUCCESS on success.
 **/
@@ -1635,7 +1677,9 @@ StartupAllAPsWithWaitEvent (
   IN EFI_AP_PROCEDURE  Procedure,
   IN VOID              *ProcedureArgument,
   IN EFI_EVENT         WaitEvent,
-  IN UINTN             TimeoutInMicroseconds
+  IN UINTN             TimeoutInMicroseconds,
+  IN BOOLEAN           SingleThread,
+  IN UINTN             **FailedCpuList
   )
 {
   EFI_STATUS   Status;
@@ -1656,7 +1700,18 @@ StartupAllAPsWithWaitEvent (
 
     if (GetApState (CpuData) == CpuStateReady) {
       SetApProcedure (CpuData, Procedure, ProcedureArgument);
+      if ((mCpuMpData.StartCount == 0) || !SingleThread) {
+        Status = DispatchCpu (Index);
+        if (EFI_ERROR (Status)) {
+          AddProcessorToFailedList (Index, CpuData->State);
+          break;
+        }
+      }
     }
+  }
+
+  if (EFI_ERROR (Status)) {
+    return EFI_NOT_READY;
   }
 
   //
@@ -1667,25 +1722,27 @@ StartupAllAPsWithWaitEvent (
   mCpuMpData.ProcedureArgument = ProcedureArgument;
   mCpuMpData.WaitEvent         = WaitEvent;
   mCpuMpData.Timeout           = TimeoutInMicroseconds;
+  mCpuMpData.TimeTaken         = 0;
   mCpuMpData.TimeoutActive     = (BOOLEAN)(TimeoutInMicroseconds != 0);
   Status                       = gBS->SetTimer (
                                         mCpuMpData.CheckAllAPsEvent,
                                         TimerPeriodic,
                                         POLL_INTERVAL_US
                                         );
+
   return Status;
 }
 
 /** Handles execution of StartupAllAPs when no wait event has been specified.
 
-   @param Procedure             The user-supplied procedure.
-   @param ProcedureArgument     The user-supplied procedure argument.
-   @param TimeoutInMicroseconds The timeout for the work to be completed. Zero
+  @param Procedure             The user-supplied procedure.
+  @param ProcedureArgument     The user-supplied procedure argument.
+  @param TimeoutInMicroseconds The timeout for the work to be completed. Zero
                                 indicates an infinite timeout.
-   @param SingleThread          Whether the APs will execute sequentially.
-   @param FailedCpuList         User-supplied pointer for list of failed CPUs.
+  @param SingleThread          Whether the APs will execute sequentially.
+  @param FailedCpuList         User-supplied pointer for list of failed CPUs.
 
-   @return EFI_SUCCESS on success.
+  @return EFI_SUCCESS on success.
 **/
 STATIC
 EFI_STATUS
@@ -1702,8 +1759,10 @@ StartupAllAPsNoWaitEvent (
   UINTN        NextIndex;
   UINTN        Timeout;
   CPU_AP_DATA  *CpuData;
+  BOOLEAN      DispatchError;
 
-  Timeout = TimeoutInMicroseconds;
+  Timeout       = TimeoutInMicroseconds;
+  DispatchError = FALSE;
 
   while (TRUE) {
     for (Index = 0; Index < mCpuMpData.NumberOfProcessors; Index++) {
@@ -1723,9 +1782,18 @@ StartupAllAPsNoWaitEvent (
           SetApProcedure (CpuData, Procedure, ProcedureArgument);
           Status = DispatchCpu (Index);
           if (EFI_ERROR (Status)) {
+            AddProcessorToFailedList (Index, CpuData->State);
             CpuData->State = CpuStateIdle;
-            Status         = EFI_NOT_READY;
-            goto Done;
+            mCpuMpData.StartCount--;
+            DispatchError = TRUE;
+
+            if (SingleThread) {
+              // Dispatch the next available AP
+              Status = GetNextBlockedNumber (&NextIndex);
+              if (!EFI_ERROR (Status)) {
+                mCpuMpData.CpuData[NextIndex].State = CpuStateReady;
+              }
+            }
           }
 
           break;
@@ -1749,23 +1817,28 @@ StartupAllAPsNoWaitEvent (
 
     if (mCpuMpData.FinishCount == mCpuMpData.StartCount) {
       Status = EFI_SUCCESS;
-      goto Done;
+      break;
     }
 
     if ((TimeoutInMicroseconds != 0) && (Timeout == 0)) {
       Status = EFI_TIMEOUT;
-      goto Done;
+      break;
     }
 
     Timeout -= CalculateAndStallInterval (Timeout);
   }
 
-Done:
-  if (FailedCpuList != NULL) {
-    if (mCpuMpData.FailedListIndex == 0) {
-      FreePool (*FailedCpuList);
-      *FailedCpuList = NULL;
+  if (Status == EFI_TIMEOUT) {
+    // Add any remaining CPUs to the FailedCpuList
+    if (FailedCpuList != NULL) {
+      for (Index = 0; Index < mCpuMpData.NumberOfProcessors; Index++) {
+        AddProcessorToFailedList (Index, mCpuMpData.CpuData[Index].State);
+      }
     }
+  }
+
+  if (DispatchError) {
+    Status = EFI_NOT_READY;
   }
 
   return Status;
