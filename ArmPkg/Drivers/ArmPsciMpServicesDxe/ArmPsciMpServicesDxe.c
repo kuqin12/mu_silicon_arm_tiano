@@ -714,6 +714,10 @@ StartupThisAP (
 
   Timeout = TimeoutInMicroseconds;
 
+  mCpuMpData.Timeout       = TimeoutInMicroseconds;
+  mCpuMpData.TimeTaken     = 0;
+  mCpuMpData.TimeoutActive = (BOOLEAN)(TimeoutInMicroseconds != 0);
+
   mCpuMpData.StartCount  = 1;
   mCpuMpData.FinishCount = 0;
 
@@ -731,21 +735,20 @@ StartupThisAP (
 
   if (WaitEvent != NULL) {
     // Non Blocking
+    if (Finished != NULL) {
+      mCpuMpData.SingleApFinished = Finished;
+      *Finished                   = FALSE;
+    }
+
     mCpuMpData.WaitEvent = WaitEvent;
-    gBS->SetTimer (
-           CpuData->CheckThisAPEvent,
-           TimerPeriodic,
-           POLL_INTERVAL_US
-           );
+    Status               = gBS->SetTimer (
+                                  CpuData->CheckThisAPEvent,
+                                  TimerPeriodic,
+                                  POLL_INTERVAL_US
+                                  );
+
     return EFI_SUCCESS;
   }
-
-  // MU_CHANGE: Set the timer anyway, otherwise this AP is spent on this boot if the AP routine timeout.
-  gBS->SetTimer (
-         CpuData->CheckThisAPEvent,
-         TimerPeriodic,
-         POLL_INTERVAL_US
-         );
 
   // Blocking
   while (TRUE) {
@@ -1056,11 +1059,6 @@ UpdateApStatus (
   CPU_STATE    State;
   UINTN        NextNumber;
 
-  if (ProcessorIndex >= mCpuMpData.NumberOfProcessors) {
-    // Reject request if index is out of boundary
-    return;
-  }
-
   CpuData = &mCpuMpData.CpuData[ProcessorIndex];
 
   if (IsProcessorBSP (ProcessorIndex)) {
@@ -1177,14 +1175,19 @@ CheckThisAPStatus (
   CPU_AP_DATA  *CpuData;
   CPU_STATE    State;
 
-  CpuData             = Context;
-  CpuData->TimeTaken += POLL_INTERVAL_US;
+  CpuData = Context;
+
+  mCpuMpData.TimeTaken += POLL_INTERVAL_US;
 
   State = GetApState (CpuData);
 
   if (State == CpuStateFinished) {
     Status = gBS->SetTimer (CpuData->CheckThisAPEvent, TimerCancel, 0);
     ASSERT_EFI_ERROR (Status);
+
+    if (mCpuMpData.SingleApFinished != NULL) {
+      *mCpuMpData.SingleApFinished = TRUE;
+    }
 
     if (mCpuMpData.WaitEvent != NULL) {
       Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
@@ -1194,7 +1197,8 @@ CheckThisAPStatus (
     CpuData->State = CpuStateIdle;
   }
 
-  if (CpuData->TimeTaken > CpuData->Timeout) {
+  if (mCpuMpData.TimeoutActive && (mCpuMpData.TimeTaken > mCpuMpData.Timeout)) {
+    Status = gBS->SetTimer (CpuData->CheckThisAPEvent, TimerCancel, 0);
     if (mCpuMpData.WaitEvent != NULL) {
       Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
       ASSERT_EFI_ERROR (Status);
@@ -1411,8 +1415,6 @@ ArmPsciMpServicesDxeInitialize (
   CONST ARM_CORE_INFO        *CoreInfo;
 
   MaxCpus = 1;
-
-  DEBUG ((DEBUG_INFO, "Starting MP services\n"));
 
   Status = gBS->HandleProtocol (
                   ImageHandle,
