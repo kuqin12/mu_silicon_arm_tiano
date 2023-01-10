@@ -34,6 +34,7 @@
 #include <PiDxe.h>
 
 #include <Library/ArmLib.h>
+#include <Library/ArmGicLib.h>
 #include <Library/ArmMmuLib.h>
 #include <Library/ArmPlatformLib.h>
 #include <Library/ArmSmcLib.h>
@@ -714,9 +715,9 @@ StartupThisAP (
 
   Timeout = TimeoutInMicroseconds;
 
-  mCpuMpData.Timeout       = TimeoutInMicroseconds;
-  mCpuMpData.TimeTaken     = 0;
-  mCpuMpData.TimeoutActive = (BOOLEAN)(TimeoutInMicroseconds != 0);
+  CpuData->Timeout       = TimeoutInMicroseconds;
+  CpuData->TimeTaken     = 0;
+  CpuData->TimeoutActive = (BOOLEAN)(TimeoutInMicroseconds != 0);
 
   mCpuMpData.StartCount  = 1;
   mCpuMpData.FinishCount = 0;
@@ -740,7 +741,7 @@ StartupThisAP (
       *Finished                   = FALSE;
     }
 
-    mCpuMpData.WaitEvent = WaitEvent;
+    CpuData->WaitEvent   = WaitEvent;
     Status               = gBS->SetTimer (
                                   CpuData->CheckThisAPEvent,
                                   TimerPeriodic,
@@ -748,6 +749,15 @@ StartupThisAP (
                                   );
 
     return EFI_SUCCESS;
+  }
+
+  // MU_CHANGE: Set the timer anyway, otherwise this AP is spent on this boot if the AP routine timeout.
+  if (CpuData->TimeoutActive) {
+    gBS->SetTimer (
+          CpuData->CheckThisAPEvent,
+          TimerPeriodic,
+          POLL_INTERVAL_US
+          );
   }
 
   // Blocking
@@ -1059,6 +1069,11 @@ UpdateApStatus (
   CPU_STATE    State;
   UINTN        NextNumber;
 
+  if (ProcessorIndex >= mCpuMpData.NumberOfProcessors) {
+    // Reject request if index is out of boundary
+    return;
+  }
+
   CpuData = &mCpuMpData.CpuData[ProcessorIndex];
 
   if (IsProcessorBSP (ProcessorIndex)) {
@@ -1175,9 +1190,8 @@ CheckThisAPStatus (
   CPU_AP_DATA  *CpuData;
   CPU_STATE    State;
 
-  CpuData = Context;
-
-  mCpuMpData.TimeTaken += POLL_INTERVAL_US;
+  CpuData             = Context;
+  CpuData->TimeTaken += POLL_INTERVAL_US;
 
   State = GetApState (CpuData);
 
@@ -1189,19 +1203,21 @@ CheckThisAPStatus (
       *mCpuMpData.SingleApFinished = TRUE;
     }
 
-    if (mCpuMpData.WaitEvent != NULL) {
-      Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
+    if (CpuData->WaitEvent != NULL) {
+      Status = gBS->SignalEvent (CpuData->WaitEvent);
       ASSERT_EFI_ERROR (Status);
     }
 
     CpuData->State = CpuStateIdle;
   }
 
-  if (mCpuMpData.TimeoutActive && (mCpuMpData.TimeTaken > mCpuMpData.Timeout)) {
-    Status = gBS->SetTimer (CpuData->CheckThisAPEvent, TimerCancel, 0);
-    if (mCpuMpData.WaitEvent != NULL) {
-      Status = gBS->SignalEvent (mCpuMpData.WaitEvent);
+  if (CpuData->TimeoutActive && (CpuData->TimeTaken > CpuData->Timeout)) {
+    // MU_CHANGE: Do not cancel timer if this 
+    // Status = gBS->SetTimer (CpuData->CheckThisAPEvent, TimerCancel, 0);
+    if (CpuData->WaitEvent != NULL) {
+      Status = gBS->SignalEvent (CpuData->WaitEvent);
       ASSERT_EFI_ERROR (Status);
+      CpuData->WaitEvent = NULL;
     }
   }
 }

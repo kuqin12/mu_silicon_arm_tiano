@@ -49,6 +49,10 @@ typedef struct {
   CPU_STATE                    State;
   EFI_EVENT                    CheckThisAPEvent;
   VOID                         *Ttbr0;
+  UINTN                        Timeout;
+  UINTN                        TimeTaken;
+  BOOLEAN                      TimeoutActive;
+  EFI_EVENT                    WaitEvent;
   UINTN                        Tcr;
   UINTN                        Mair;
 } CPU_AP_DATA;
