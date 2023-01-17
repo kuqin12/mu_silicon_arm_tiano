@@ -9,6 +9,7 @@
 
 #include <AsmMacroIoLibV8.h>
 #include <IndustryStandard/ArmStdSmc.h>
+#include <Library/ArmLib.h>
 
 #include "MpServicesInternal.h"
 
@@ -16,6 +17,9 @@ GCC_ASM_IMPORT (gApStacksBase)
 GCC_ASM_IMPORT (gProcessorIDs)
 GCC_ASM_IMPORT (ApProcedure)
 GCC_ASM_IMPORT (gApStackSize)
+GCC_ASM_IMPORT (gTcr)
+GCC_ASM_IMPORT (gTtbr0)
+GCC_ASM_IMPORT (gMair)
 
 GCC_ASM_EXPORT (ApEntryPoint)
 
@@ -25,6 +29,19 @@ GCC_ASM_EXPORT (ApEntryPoint)
 //   VOID
 //   );
 ASM_PFX(ApEntryPoint):
+  // Configure the MMU and caches
+  ldr x0, gTcr
+  bl ArmSetTCR
+  ldr x0, gTtbr0
+  bl ArmSetTTBR0
+  ldr x0, gMair
+  bl ArmSetMAIR
+  bl ArmDisableAlignmentCheck
+  bl ArmEnableStackAlignmentCheck
+  bl ArmEnableInstructionCache
+  bl ArmEnableDataCache
+  bl ArmEnableMmu
+
   mrs x0, mpidr_el1
   // Mask the non-affinity bits
   bic x0, x0, 0x00ff000000
