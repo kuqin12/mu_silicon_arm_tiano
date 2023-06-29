@@ -17,14 +17,14 @@
   HestDxe.c
 
 [Packages]
-  ArmPkg/ArmPkg.dec
+  # ArmPkg/ArmPkg.dec
   ArmPlatformPkg/ArmPlatformPkg.dec
   MdeModulePkg/MdeModulePkg.dec
   MdePkg/MdePkg.dec
   #Platform/ARM/SgiPkg/SgiPlatform.dec    # MU_CHANGE - CI Fixes
 
 [LibraryClasses]
-  ArmLib
+  # ArmLib
   BaseMemoryLib
   DebugLib
   UefiDriverEntryPoint

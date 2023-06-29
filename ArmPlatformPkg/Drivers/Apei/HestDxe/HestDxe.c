@@ -11,9 +11,10 @@
 
 **/
 
+#include <PiDxe.h>
 #include <IndustryStandard/Acpi.h>
 
-#include <Library/ArmLib.h>
+// #include <Library/ArmLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
@@ -172,7 +173,7 @@ AppendErrorSourceDescriptor (
   // descriptors.
   //
   NewTableSize = mHestDriverData.CurrentTableSize +
-                 ErrorSourceDescriptorListSize;
+                 (UINT32)ErrorSourceDescriptorListSize;
   mHestDriverData.HestTable = ReallocateHestTableMemory (
                                 mHestDriverData.CurrentTableSize,
                                 NewTableSize,
@@ -186,7 +187,7 @@ AppendErrorSourceDescriptor (
   //
   // Copy the incoming error source descriptors into HEST table.
   //
-  ErrorDescriptorPtr = (VOID *)mHestDriverData.HestTable +
+  ErrorDescriptorPtr = (UINT8*)mHestDriverData.HestTable +
                        mHestDriverData.CurrentTableSize;
   HestHeaderPtr = (EFI_ACPI_6_3_HARDWARE_ERROR_SOURCE_TABLE_HEADER *)
                   mHestDriverData.HestTable;
@@ -197,7 +198,7 @@ AppendErrorSourceDescriptor (
     );
   mHestDriverData.CurrentTableSize = NewTableSize;
   HestHeaderPtr->Header.Length     = mHestDriverData.CurrentTableSize;
-  HestHeaderPtr->ErrorSourceCount += ErrorSourceDescriptorCount;
+  HestHeaderPtr->ErrorSourceCount += (UINT32)ErrorSourceDescriptorCount;
 
   DEBUG ((
     DEBUG_INFO,
