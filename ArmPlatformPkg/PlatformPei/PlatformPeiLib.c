@@ -9,6 +9,7 @@
 #include <PiPei.h>
 
 #include <Library/ArmPlatformLib.h>
+#include <Library/MemoryAllocationLib.h>
 #include <Library/HobLib.h>
 #include <Library/PcdLib.h>
 
@@ -18,7 +19,13 @@ PlatformPeim (
   VOID
   )
 {
-  BuildFvHob (PcdGet64 (PcdFvBaseAddress), PcdGet32 (PcdFvSize));
+  VOID *new = AllocateCopyPool ((UINTN)PcdGet32 (PcdFvSize), (VOID*)(UINTN)PcdGet64 (PcdFvBaseAddress));
+
+  if (new == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  BuildFvHob ((EFI_PHYSICAL_ADDRESS)(UINTN)new, PcdGet32 (PcdFvSize));
 
   return EFI_SUCCESS;
 }
