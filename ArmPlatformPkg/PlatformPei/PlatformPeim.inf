@@ -43,6 +43,7 @@
 [Ppis]
   gEfiPeiMasterBootModePpiGuid                  # PPI ALWAYS_PRODUCED
   gEfiPeiBootInRecoveryModePpiGuid              # PPI SOMETIMES_PRODUCED
+  gEfiEndOfPeiSignalPpiGuid                # PPI ALWAYS_CONSUMED
 
 [FixedPcd]
   gArmTokenSpaceGuid.PcdFdBaseAddress

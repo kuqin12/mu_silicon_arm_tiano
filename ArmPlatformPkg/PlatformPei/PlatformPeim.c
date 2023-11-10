@@ -38,6 +38,22 @@ PlatformPeim (
   VOID
   );
 
+EFI_STATUS
+EFIAPI
+PublishFvHob (
+  IN EFI_PEI_SERVICES           **PeiServices,
+  IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
+  IN VOID                       *Ppi
+  )
+{
+  EFI_STATUS Status;
+
+  Status = PlatformPeim ();
+  DEBUG ((DEBUG_ERROR, "%a Return from publish FV hob - %r!\n", __func__, Status));
+
+  return Status;
+}
+
 //
 // Module globals
 //
@@ -51,6 +67,14 @@ CONST EFI_PEI_PPI_DESCRIPTOR  mPpiListRecoveryBootMode = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiPeiBootInRecoveryModePpiGuid,
   NULL
+};
+
+CONST EFI_PEI_NOTIFY_DESCRIPTOR  mPpiNotifyList[] = {
+  {
+    (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+    &gEfiEndOfPeiSignalPpiGuid,
+    PublishFvHob
+  }
 };
 
 /*++
@@ -84,7 +108,10 @@ InitializePlatformPeim (
   Status = PeiServicesSetBootMode (ArmPlatformGetBootMode ());
   ASSERT_EFI_ERROR (Status);
 
-  PlatformPeim ();
+  Status = PeiServicesNotifyPpi (mPpiNotifyList);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "Failed to register memory discovered callback function - %r!\n", Status));
+  }
 
   Status = PeiServicesGetBootMode (&BootMode);
   ASSERT_EFI_ERROR (Status);

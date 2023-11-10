@@ -10,6 +10,7 @@
 
 #include <Library/ArmPlatformLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/BaseMemoryLib.h>
 #include <Library/HobLib.h>
 #include <Library/PcdLib.h>
 
@@ -19,12 +20,13 @@ PlatformPeim (
   VOID
   )
 {
-  VOID *new = AllocateCopyPool ((UINTN)PcdGet32 (PcdFvSize), (VOID*)(UINTN)PcdGet64 (PcdFvBaseAddress));
+  VOID *new = AllocatePages ((UINTN)EFI_SIZE_TO_PAGES (PcdGet32 (PcdFvSize)));
 
   if (new == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
+  CopyMem (new, (VOID*)(UINTN)PcdGet64 (PcdFvBaseAddress), PcdGet32 (PcdFvSize));
   BuildFvHob ((EFI_PHYSICAL_ADDRESS)(UINTN)new, PcdGet32 (PcdFvSize));
 
   return EFI_SUCCESS;
