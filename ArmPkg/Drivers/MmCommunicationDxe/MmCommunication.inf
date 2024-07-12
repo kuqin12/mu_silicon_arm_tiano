@@ -39,6 +39,7 @@
   DxeServicesTableLib
   HobLib
   UefiDriverEntryPoint
+  ArmGenericTimerCounterLib
 
 [Protocols]
   gEfiMmCommunication2ProtocolGuid              ## PRODUCES

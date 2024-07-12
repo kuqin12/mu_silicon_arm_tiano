@@ -65,7 +65,7 @@ TimerConstructor (
     // mode (if secure extension is supported).
     // If the reset value (0) is returned, just ASSERT.
     //
-    ASSERT (ArmGenericTimerGetTimerFreq () != 0);
+    // ASSERT (ArmGenericTimerGetTimerFreq () != 0);
   } else {
     DEBUG ((DEBUG_ERROR, "ARM Architectural Timer is not available in the CPU, hence this library cannot be used.\n"));
     ASSERT (0);

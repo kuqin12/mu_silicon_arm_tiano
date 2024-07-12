@@ -15,6 +15,7 @@
 #include <Library/PcdLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/ArmGenericTimerCounterLib.h>
 
 #include <Protocol/MmCommunication2.h>
 
@@ -156,6 +157,9 @@ MmCommunication2Communicate (
 
   // Call the Standalone MM environment.
   ArmCallSmc (&CommunicateSmcArgs);
+  // DEBUG((DEBUG_INFO, "TIMER: cntrl=0x%llx val=0x%llx freq=0x%llx\n", ArmGenericTimerGetTimerCtrlReg (), ArmGenericTimerGetTimerVal(), ArmGenericTimerGetTimerFreq()));
+  ArmGenericTimerSetTimerCtrlReg (ARM_ARCH_TIMER_ENABLE);
+  // DEBUG((DEBUG_INFO, "TIMER: cntrl=0x%llx val=0x%llx freq=0x%llx\n", ArmGenericTimerGetTimerCtrlReg (), ArmGenericTimerGetTimerVal(), ArmGenericTimerGetTimerFreq()));
 
   switch (CommunicateSmcArgs.Arg0) {
     case ARM_SMC_MM_RET_SUCCESS:
