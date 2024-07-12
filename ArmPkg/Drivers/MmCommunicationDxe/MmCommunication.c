@@ -15,6 +15,7 @@
 #include <Library/PcdLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/ArmGenericTimerCounterLib.h>
 
 #include <Protocol/MmCommunication2.h>
 
@@ -73,6 +74,8 @@ SendFfaMmCommunicate (
     // We are assuming vCPU0 of the StMM SP since it is UP.
     Status = ArmFfaLibRun (mStMmPartId, 0x00);
   }
+
+  ArmGenericTimerSetTimerCtrlReg (ARM_ARCH_TIMER_ENABLE);
 
   return Status;
 }
