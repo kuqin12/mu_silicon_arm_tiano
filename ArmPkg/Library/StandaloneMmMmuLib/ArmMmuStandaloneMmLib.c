@@ -261,7 +261,9 @@ ArmSetMemoryRegionNoAccess (
 
   Status = GetMemoryPermissions (BaseAddress, &MemoryAttributes);
   if (!EFI_ERROR (Status)) {
-    CodePermission = SET_MEM_ATTR_DATA_PERM_NO_ACCESS << SET_MEM_ATTR_CODE_PERM_SHIFT;
+    CodePermission =
+      (ARM_SPM_MM_SET_MEM_ATTR_DATA_PERM_NO_ACCESS <<
+       ARM_SPM_MM_SET_MEM_ATTR_CODE_PERM_SHIFT);
     return RequestMemoryPermissionChange (
              BaseAddress,
              Length,
@@ -285,7 +287,9 @@ ArmClearMemoryRegionNoAccess (
 
   Status = GetMemoryPermissions (BaseAddress, &MemoryAttributes);
   if (!EFI_ERROR (Status)) {
-    CodePermission = SET_MEM_ATTR_DATA_PERM_NO_ACCESS << SET_MEM_ATTR_CODE_PERM_SHIFT;
+    CodePermission =
+      (ARM_SPM_MM_SET_MEM_ATTR_DATA_PERM_NO_ACCESS <<
+       ARM_SPM_MM_SET_MEM_ATTR_CODE_PERM_SHIFT);
     return RequestMemoryPermissionChange (
              BaseAddress,
              Length,
