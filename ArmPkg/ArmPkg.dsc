@@ -142,6 +142,7 @@
   ArmPkg/Library/SemihostLib/SemihostLib.inf
   ArmPkg/Library/ArmExceptionLib/ArmExceptionLib.inf
   ArmPkg/Library/ArmExceptionLib/ArmRelocateExceptionLib.inf
+  ArmPkg/Library/SecurePartitionEntryPoint/SecurePartitionEntryPoint.inf
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   ArmPkg/Drivers/CpuPei/CpuPei.inf
