@@ -22,13 +22,11 @@
 #include <IndustryStandard/ArmFfaSvc.h>
 #include <Uefi/UefiBaseType.h>
 
-.data
-.section .data.stmm_stack, "aw"
-.align 12
+  .align 12
 // Define a data section to be used for setting up the
 // stack for StandaloneMm
 stmm_stack:
-.zero FixedPcdGet32 (PcdStMmStackSize)
+  .space FixedPcdGet32 (PcdStMmStackSize)
 
 .text
 //
