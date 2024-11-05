@@ -109,7 +109,7 @@ GetFfaCompatibility (
     return EFI_UNSUPPORTED;
   }
 
-  if ((ARM_FFA_MAJOR_VERSION != CurrentMinorVersion) ||
+  if ((ARM_FFA_MAJOR_VERSION != CurrentMajorVersion) ||
       (ARM_FFA_MINOR_VERSION > CurrentMinorVersion))
   {
     DEBUG ((

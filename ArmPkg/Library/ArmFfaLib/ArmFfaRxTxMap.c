@@ -124,7 +124,7 @@ ArmFfaLibRxTxMap (
 
   ZeroMem (&FfaArgs, sizeof (ARM_FFA_ARGS));
 
-  switch (MinSizeAndAlign) {
+  switch (MinSizeAndAlign & 0x03) {
     case ARM_FFA_BUFFER_MINSIZE_AND_ALIGN_4K:
       MinSizeAndAlign = SIZE_4KB;
       break;
