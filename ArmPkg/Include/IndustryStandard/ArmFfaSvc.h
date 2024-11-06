@@ -126,6 +126,8 @@
 
 #define ARM_FFA_MAJOR_VERSION_GET(version) \
   (((version) >> ARM_FFA_MAJOR_VERSION_SHIFT) & ARM_FFA_MAJOR_VERSION_MASK)
+#define ARM_FFA_SPM_RET_NO_DATA             -9
+#define ARM_FFA_SPM_RET_NOT_READY           -10
 
 #define ARM_FFA_MINOR_VERSION_GET(version) \
   (((version) >> ARM_FFA_MINOR_VERSION_SHIFT) & ARM_FFA_MINOR_VERSION_MASK)
