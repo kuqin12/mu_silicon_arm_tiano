@@ -145,6 +145,7 @@
   ArmPkg/Library/SecurePartitionEntryPoint/SecurePartitionEntryPoint.inf
   ArmPkg/Library/PlatformFfaInterruptLibNull/PlatformFfaInterruptLib.inf
   ArmPkg/Library/ArmFfaLibEx/ArmFfaLibEx.inf
+  ArmPkg/Library/Tpm2DeviceLibFfa/Tpm2DeviceLibFfa.inf
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   ArmPkg/Drivers/CpuPei/CpuPei.inf
