@@ -1,7 +1,7 @@
 /** @file
   File managing the MMU for ARMv8 architecture in S-EL0
 
-  Copyright (c) 2017 - 2021, Arm Limited. All rights reserved.<BR>
+  Copyright (c) 2017 - 2024, Arm Limited. All rights reserved.<BR>
   Copyright (c) 2021, Linaro Limited
   SPDX-License-Identifier: BSD-2-Clause-Patent
 

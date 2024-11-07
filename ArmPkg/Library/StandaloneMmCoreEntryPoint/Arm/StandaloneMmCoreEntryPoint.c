@@ -34,8 +34,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define SPM_MAJOR_VER_SHIFT  16
 #define FFA_NOT_SUPPORTED    -1
 
-STATIC CONST UINT32  mSpmMajorVer = SPM_MAJOR_VERSION;
-STATIC CONST UINT32  mSpmMinorVer = SPM_MINOR_VERSION;
+STATIC CONST UINT32  mSpmMajorVer = ARM_SPM_MM_SUPPORT_MAJOR_VERSION;
+STATIC CONST UINT32  mSpmMinorVer = ARM_SPM_MM_SUPPORT_MINOR_VERSION;
 
 STATIC CONST UINT32  mSpmMajorVerFfa = SPM_MAJOR_VERSION_FFA;
 STATIC CONST UINT32  mSpmMinorVerFfa = SPM_MINOR_VERSION_FFA;
@@ -186,33 +186,46 @@ DelegatedEventLoop (
 
     switch (Status) {
       case EFI_SUCCESS:
-        SvcStatus = ARM_SVC_SPM_RET_SUCCESS;
+        SvcStatus = ARM_SPM_MM_RET_SUCCESS;
         break;
       case EFI_INVALID_PARAMETER:
-        SvcStatus = ARM_SVC_SPM_RET_INVALID_PARAMS;
+        SvcStatus = ARM_SPM_MM_RET_INVALID_PARAMS;
         break;
       case EFI_ACCESS_DENIED:
-        SvcStatus = ARM_SVC_SPM_RET_DENIED;
+        SvcStatus = ARM_SPM_MM_RET_DENIED;
         break;
       case EFI_OUT_OF_RESOURCES:
-        SvcStatus = ARM_SVC_SPM_RET_NO_MEMORY;
+        SvcStatus = ARM_SPM_MM_RET_NO_MEMORY;
         break;
       case EFI_UNSUPPORTED:
-        SvcStatus = ARM_SVC_SPM_RET_NOT_SUPPORTED;
+        SvcStatus = ARM_SPM_MM_RET_NOT_SUPPORTED;
         break;
       default:
-        SvcStatus = ARM_SVC_SPM_RET_NOT_SUPPORTED;
+        SvcStatus = ARM_SPM_MM_RET_NOT_SUPPORTED;
         break;
     }
 
     if (FfaEnabled) {
-      EventCompleteSvcArgs->Arg0 = ARM_SVC_ID_FFA_MSG_SEND_DIRECT_RESP;
-      EventCompleteSvcArgs->Arg1 = 0;
+      if (ARM_FID_FFA_INTERRUPT == EventCompleteSvcArgs->Arg0) {
+        // FFA v1.1 section 8.3 Secure interrupt completion mechanisms
+        EventCompleteSvcArgs->Arg0 = ARM_FID_FFA_WAIT;
+        EventCompleteSvcArgs->Arg3 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
+        EventCompleteSvcArgs->Arg4 = SvcStatus;
+      } else if (ARM_FID_FFA_MSG_SEND_DIRECT_REQ == EventCompleteSvcArgs->Arg0) {
+        EventCompleteSvcArgs->Arg0 = ARM_FID_FFA_MSG_SEND_DIRECT_RESP;
+        EventCompleteSvcArgs->Arg3 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
+        EventCompleteSvcArgs->Arg4 = SvcStatus;
+      } else {
+        EventCompleteSvcArgs->Arg0 = ARM_FID_FFA_MSG_SEND_DIRECT_RESP2;
+        EventCompleteSvcArgs->Arg3 = 0;
+        CopyMem (&EventCompleteSvcArgs->Arg4, Output.Message, sizeof (Output.Message));
+      }
+      EventCompleteSvcArgs->Arg1 = ReceiverPartId << 16 | SenderPartId;
       EventCompleteSvcArgs->Arg2 = 0;
       EventCompleteSvcArgs->Arg3 = ARM_SVC_ID_SP_EVENT_COMPLETE;
       EventCompleteSvcArgs->Arg4 = SvcStatus;
     } else {
-      EventCompleteSvcArgs->Arg0 = ARM_SVC_ID_SP_EVENT_COMPLETE;
+      EventCompleteSvcArgs->Arg0 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
       EventCompleteSvcArgs->Arg1 = SvcStatus;
     }
   }
@@ -245,7 +258,7 @@ GetSpmVersion (
     CallerSpmMajorVer    = mSpmMajorVerFfa;
     CallerSpmMinorVer    = mSpmMinorVerFfa;
   } else {
-    SpmVersionArgs.Arg0 = ARM_SVC_ID_SPM_VERSION_AARCH32;
+    SpmVersionArgs.Arg0 = ARM_FID_SPM_MM_VERSION_AARCH32;
     CallerSpmMajorVer   = mSpmMajorVer;
     CallerSpmMinorVer   = mSpmMinorVer;
   }
@@ -310,10 +323,10 @@ InitArmSvcArgs (
     InitMmFoundationSvcArgs->Arg0 = ARM_SVC_ID_FFA_MSG_SEND_DIRECT_RESP;
     InitMmFoundationSvcArgs->Arg1 = 0;
     InitMmFoundationSvcArgs->Arg2 = 0;
-    InitMmFoundationSvcArgs->Arg3 = ARM_SVC_ID_SP_EVENT_COMPLETE;
+    InitMmFoundationSvcArgs->Arg3 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
     InitMmFoundationSvcArgs->Arg4 = *Ret;
   } else {
-    InitMmFoundationSvcArgs->Arg0 = ARM_SVC_ID_SP_EVENT_COMPLETE;
+    InitMmFoundationSvcArgs->Arg0 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
     InitMmFoundationSvcArgs->Arg1 = *Ret;
   }
 }
