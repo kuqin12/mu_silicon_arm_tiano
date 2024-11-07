@@ -28,6 +28,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <IndustryStandard/ArmStdSmc.h>
 #include <IndustryStandard/ArmMmSvc.h>
 #include <IndustryStandard/ArmFfaSvc.h>
+#include <IndustryStandard/ArmFfaBootInfo.h>
 
 #define SPM_MAJOR_VER_MASK   0xFFFF0000
 #define SPM_MINOR_VER_MASK   0x0000FFFF
@@ -320,7 +321,7 @@ InitArmSvcArgs (
   )
 {
   if (FeaturePcdGet (PcdFfaEnable)) {
-    InitMmFoundationSvcArgs->Arg0 = ARM_SVC_ID_FFA_MSG_SEND_DIRECT_RESP;
+    InitMmFoundationSvcArgs->Arg0 = ARM_FID_FFA_MSG_SEND_DIRECT_RESP;
     InitMmFoundationSvcArgs->Arg1 = 0;
     InitMmFoundationSvcArgs->Arg2 = 0;
     InitMmFoundationSvcArgs->Arg3 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
