@@ -162,7 +162,7 @@ ArmCallFfa (
   IN OUT ARM_FFA_ARGS  *FfaArgs
   )
 {
-  if (FixedPcdGetBool (PcdFfaLibConduitSmc)) {
+  if (PcdGetBool (PcdFfaLibConduitSmc)) {
     ArmCallSmc ((ARM_SMC_ARGS *)FfaArgs);
   } else {
     ArmCallSvc ((ARM_SVC_ARGS *)FfaArgs);

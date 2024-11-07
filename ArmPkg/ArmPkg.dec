@@ -333,6 +333,12 @@
   # If PcdMonitorConduitHvc = TRUE, conduit = HVC
   gArmTokenSpaceGuid.PcdMonitorConduitHvc|FALSE|BOOLEAN|0x00000047
 
+  #
+  # Define the conduit to use ArmFfalib.
+  # Default PcdFfaLibConduitSmc == TRUE, conduit = SMC
+  # If PcdFfaLibConduitSvc == FALSE, conduit = SVC
+  gArmTokenSpaceGuid.PcdFfaLibConduitSmc|TRUE|BOOLEAN|0x00000063
+
 [PcdsFixedAtBuild.common, PcdsDynamic.common]
   #
   # ARM Architectural Timer
@@ -421,12 +427,6 @@
   #
   gArmTokenSpaceGuid.PcdPciBusMin|0x0|UINT32|0x00000059
   gArmTokenSpaceGuid.PcdPciBusMax|0x0|UINT32|0x0000005A
-
-  #
-  # Define the conduit to use ArmFfalib.
-  # Default PcdFfaLibConduitSmc == TRUE, conduit = SMC
-  # If PcdFfaLibConduitSvc == FALSE, conduit = SVC
-  gArmTokenSpaceGuid.PcdFfaLibConduitSmc|TRUE|BOOLEAN|0x00000063
 
 [PcdsDynamicEx]
   #

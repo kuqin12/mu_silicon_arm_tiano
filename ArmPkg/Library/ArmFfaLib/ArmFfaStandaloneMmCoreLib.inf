@@ -32,5 +32,5 @@
   BaseMemoryLib
   DebugLib
 
-[FixedPcd]
+[Pcd]
   gArmTokenSpaceGuid.PcdFfaLibConduitSmc
