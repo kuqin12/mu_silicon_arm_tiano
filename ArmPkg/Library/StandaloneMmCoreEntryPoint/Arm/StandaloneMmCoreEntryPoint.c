@@ -16,14 +16,19 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/MpInformation.h>
 
 #include <StandaloneMmCpu.h>
+#include <Protocol/FfaDirectReq2Protocol.h>
+
+#include <Library/ArmMmuLib.h>
 #include <Library/ArmSvcLib.h>
 #include <Library/DebugLib.h>
 #include <Library/HobLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
 #include <Library/SerialPortLib.h>
 #include <Library/ArmStandaloneMmMmuLib.h>
 #include <Library/PcdLib.h>
+#include <Library/MmServicesTableLib.h>
 
 #include <IndustryStandard/ArmStdSmc.h>
 #include <IndustryStandard/ArmMmSvc.h>
@@ -38,8 +43,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 STATIC CONST UINT32  mSpmMajorVer = ARM_SPM_MM_SUPPORT_MAJOR_VERSION;
 STATIC CONST UINT32  mSpmMinorVer = ARM_SPM_MM_SUPPORT_MINOR_VERSION;
 
-STATIC CONST UINT32  mSpmMajorVerFfa = SPM_MAJOR_VERSION_FFA;
-STATIC CONST UINT32  mSpmMinorVerFfa = SPM_MINOR_VERSION_FFA;
+STATIC CONST UINT32  mSpmMajorVerFfa = ARM_FFA_MAJOR_VERSION;
+STATIC CONST UINT32  mSpmMinorVerFfa = ARM_FFA_MINOR_VERSION;
 
 #define BOOT_PAYLOAD_VERSION  1
 
@@ -114,6 +119,50 @@ GetAndPrintBootinformation (
 }
 
 /**
+  This function is used to prepare a GUID for FF-A.
+
+  The FF-A expects a GUID to be in a specific format. This function
+  manipulates the input Guid to be understood by the FF-A.
+
+  Note: This function is symmetric, i.e., calling it twice will return the
+  original GUID. Thus, it can be used to prepare and restore the GUID.
+
+  @param  Guid - Supplies the pointer for original GUID. This is the one you
+  get from VS GUID creator.
+
+  @retval None.
+**/
+STATIC
+VOID
+FfaPrepareGuid (
+  IN OUT EFI_GUID *Guid
+  )
+{
+  UINT32 TempData[4];
+
+  if (Guid == NULL) {
+      return;
+  }
+
+  //
+  // Swap Data2 and Data3 of the input GUID.
+  //
+
+  Guid->Data2 += Guid->Data3;
+  Guid->Data3 = Guid->Data2 - Guid->Data3;
+  Guid->Data2 = Guid->Data2 - Guid->Data3;
+  CopyMem (TempData, Guid, sizeof(EFI_GUID));
+
+  //
+  // Swap the bytes for TempData[2] and TempData[3].
+  //
+
+  TempData[2] = SwapBytes32 (TempData[2]);
+  TempData[3] = SwapBytes32 (TempData[3]);
+  CopyMem (Guid, TempData, sizeof(EFI_GUID));
+}
+
+/**
   A loop to delegated events.
 
   @param  [in] EventCompleteSvcArgs   Pointer to the event completion arguments.
@@ -128,6 +177,15 @@ DelegatedEventLoop (
   BOOLEAN     FfaEnabled;
   EFI_STATUS  Status;
   UINTN       SvcStatus;
+  UINTN       HandleBuffSize;
+  UINTN       Index;
+  EFI_HANDLE  *Handles = NULL;
+  EFI_GUID    LocalReq2Guid;
+  FFA_DIRECT_REQ2_PROTOCOL *FfaDirectReq2Protocol = NULL;
+  FFA_MSG_DIRECT_2 Input;
+  FFA_MSG_DIRECT_2 Output;
+  UINT16      SenderPartId;
+  UINT16      ReceiverPartId;
 
   while (TRUE) {
     ArmCallSvc (EventCompleteSvcArgs);
@@ -148,25 +206,79 @@ DelegatedEventLoop (
     // between synchronous and asynchronous events.
     //
     if ((ARM_SMC_ID_MM_COMMUNICATE != (UINT32)EventCompleteSvcArgs->Arg0) &&
-        (ARM_SVC_ID_FFA_MSG_SEND_DIRECT_REQ != (UINT32)EventCompleteSvcArgs->Arg0))
+        (ARM_FID_FFA_MSG_SEND_DIRECT_REQ != (UINT32)EventCompleteSvcArgs->Arg0))
     {
       DEBUG ((DEBUG_ERROR, "UnRecognized Event - 0x%x\n", (UINT32)EventCompleteSvcArgs->Arg0));
       Status = EFI_INVALID_PARAMETER;
     } else {
-      FfaEnabled = FeaturePcdGet (PcdFfaEnable);
+      FfaEnabled = FeaturePcdGet (PcdFfaEnable) != 0;
       if (FfaEnabled) {
-        Status = CpuDriverEntryPoint (
-                   EventCompleteSvcArgs->Arg0,
-                   EventCompleteSvcArgs->Arg6,
-                   EventCompleteSvcArgs->Arg3
-                   );
-        if (EFI_ERROR (Status)) {
-          DEBUG ((
-            DEBUG_ERROR,
-            "Failed delegated event 0x%x, Status 0x%x\n",
-            EventCompleteSvcArgs->Arg3,
-            Status
-            ));
+        SenderPartId = EventCompleteSvcArgs->Arg1 >> 16;
+        ReceiverPartId = EventCompleteSvcArgs->Arg1 & 0xffff;
+        if (ARM_FID_FFA_MSG_SEND_DIRECT_REQ2 == EventCompleteSvcArgs->Arg0) {
+          // Engage direct request 2 protocols from the hub here.
+          ZeroMem (&Output, sizeof (Output));
+
+          HandleBuffSize = 0;
+          Status = gMmst->MmLocateHandle (ByProtocol, &gFfaDirectReq2ProtocolGuid, NULL, &HandleBuffSize, NULL);
+          if ((Status != EFI_BUFFER_TOO_SMALL) && (Status != EFI_SUCCESS)) {
+            DEBUG ((DEBUG_ERROR, "[%a] - Failed to locate any instances of gFfaDirectReq2ProtocolGuid: %r\n", __FUNCTION__, Status));
+            Status = EFI_NOT_FOUND;
+            goto Exit;
+          }
+
+          Handles = AllocatePool (HandleBuffSize);
+          Status = gMmst->MmLocateHandle (ByProtocol, &gFfaDirectReq2ProtocolGuid, NULL, &HandleBuffSize, Handles);
+          if (EFI_ERROR (Status)) {
+            DEBUG ((DEBUG_ERROR, "[%a] - Failed to locate any instances of gFfaDirectReq2ProtocolGuid: %r\n", __FUNCTION__, Status));
+            goto Exit;
+          }
+
+          CopyMem (&LocalReq2Guid, &EventCompleteSvcArgs->Arg2, sizeof (LocalReq2Guid));
+          FfaPrepareGuid (&LocalReq2Guid);
+
+          Status = EFI_NOT_FOUND;
+          for (Index = 0; Index < HandleBuffSize / sizeof (EFI_HANDLE); Index++) {
+            Status = gMmst->MmHandleProtocol (Handles[Index], &gFfaDirectReq2ProtocolGuid, (VOID **)&FfaDirectReq2Protocol);
+            if (EFI_ERROR (Status)) {
+              DEBUG ((DEBUG_WARN, "[%a] - Failed to get the protocol instance: %r\n", __FUNCTION__, Status));
+              continue;
+            }
+
+            if (CompareMem (&FfaDirectReq2Protocol->ProtocolID, &LocalReq2Guid, sizeof (LocalReq2Guid)) == 0) {
+              Status = EFI_SUCCESS;
+              break;
+            }
+          }
+
+          if (EFI_ERROR (Status)) {
+            DEBUG ((DEBUG_ERROR, "[%a] - Failed to find the protocol instance: %r\n", __FUNCTION__, Status));
+            goto Exit;
+          }
+
+          ZeroMem (&Input, sizeof (Input));
+          CopyMem (Input.Message, &EventCompleteSvcArgs->Arg4, sizeof (Input.Message));
+          Status = FfaDirectReq2Protocol->ProcessInputArgs (FfaDirectReq2Protocol, SenderPartId, ReceiverPartId, &Input, &Output);
+          if (EFI_ERROR (Status)) {
+            DEBUG ((DEBUG_ERROR, "[%a] - Failed to process the input args: %r\n", __FUNCTION__, Status));
+            goto Exit;
+          }
+        } else {
+          // Normal MM communication dispatching.
+          Status = CpuDriverEntryPoint (
+                    EventCompleteSvcArgs->Arg0,
+                    // Assume CPU number 0
+                    0,
+                    EventCompleteSvcArgs->Arg3
+                    );
+          if (EFI_ERROR (Status)) {
+            DEBUG ((
+              DEBUG_ERROR,
+              "Failed delegated event 0x%x, Status 0x%x\n",
+              EventCompleteSvcArgs->Arg3,
+              Status
+              ));
+          }
         }
       } else {
         Status = CpuDriverEntryPoint (
@@ -185,6 +297,7 @@ DelegatedEventLoop (
       }
     }
 
+Exit:
     switch (Status) {
       case EFI_SUCCESS:
         SvcStatus = ARM_SPM_MM_RET_SUCCESS;
@@ -223,12 +336,14 @@ DelegatedEventLoop (
       }
       EventCompleteSvcArgs->Arg1 = ReceiverPartId << 16 | SenderPartId;
       EventCompleteSvcArgs->Arg2 = 0;
-      EventCompleteSvcArgs->Arg3 = ARM_SVC_ID_SP_EVENT_COMPLETE;
-      EventCompleteSvcArgs->Arg4 = SvcStatus;
     } else {
       EventCompleteSvcArgs->Arg0 = ARM_FID_SPM_MM_SP_EVENT_COMPLETE;
       EventCompleteSvcArgs->Arg1 = SvcStatus;
     }
+  }
+
+  if (Handles != NULL) {
+    FreePool (Handles);
   }
 }
 
@@ -253,7 +368,7 @@ GetSpmVersion (
   ARM_SVC_ARGS  SpmVersionArgs;
 
   if (FeaturePcdGet (PcdFfaEnable)) {
-    SpmVersionArgs.Arg0  = ARM_SVC_ID_FFA_VERSION_AARCH32;
+    SpmVersionArgs.Arg0  = ARM_FID_FFA_VERSION;
     SpmVersionArgs.Arg1  = mSpmMajorVerFfa << SPM_MAJOR_VER_SHIFT;
     SpmVersionArgs.Arg1 |= mSpmMinorVerFfa;
     CallerSpmMajorVer    = mSpmMajorVerFfa;

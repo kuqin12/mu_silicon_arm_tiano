@@ -52,6 +52,9 @@
   # MU_CHANGE [END] - Nerf StandaloneMmMmuLib. It's just ArmMmuLib.
   ArmSvcLib
 
+[Protocols]
+  gFfaDirectReq2ProtocolGuid
+
 [Guids]
   gMpInformationHobGuid
   gEfiMmPeiMmramMemoryReserveGuid
