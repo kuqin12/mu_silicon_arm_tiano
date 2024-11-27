@@ -147,6 +147,7 @@
   ArmPkg/Library/ArmFfaLibEx/ArmFfaLibEx.inf
   ArmPkg/Library/Tpm2DeviceLibFfa/Tpm2DeviceLibFfa.inf
   ArmPkg/Library/SecurePartitionServicesTableLib/SecurePartitionServicesTableLib.inf
+  ArmPkg/Library/SecurePartitionMemoryAllocationLib/SecurePartitionMemoryAllocationLib.inf
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   ArmPkg/Drivers/CpuPei/CpuPei.inf
