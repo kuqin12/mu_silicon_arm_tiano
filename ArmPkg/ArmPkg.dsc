@@ -202,6 +202,7 @@
   ArmPkg/Drivers/MmCommunicationPei/MmCommunicationPei.inf
 
   ArmPkg/Library/ArmArchTimerLibEx/ArmArchTimerLibEx.inf
+  ArmPkg/Library/NotificationServiceLib/NotificationServiceLib.inf
 
 [Components.AARCH64]
   ArmPkg/Drivers/ArmPsciMpServicesDxe/ArmPsciMpServicesDxe.inf
