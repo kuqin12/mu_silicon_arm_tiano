@@ -206,6 +206,7 @@
   ArmPkg/Library/ArmArchTimerLibEx/ArmArchTimerLibEx.inf
   ArmPkg/Library/NotificationServiceLib/NotificationServiceLib.inf
   ArmPkg/Library/TestServiceLib/TestServiceLib.inf
+  ArmPkg/Library/TpmServiceLib/TpmServiceLib.inf
 
 [Components.common.MM_CORE_STANALONE]
   ArmPkg/Library/ArmStandaloneMmCoreEntryPoint/ArmStandaloneMmCoreEntryPoint.inf
