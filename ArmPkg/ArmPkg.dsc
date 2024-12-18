@@ -201,6 +201,8 @@
   # MU_CHANGE [END]
   ArmPkg/Drivers/MmCommunicationPei/MmCommunicationPei.inf
 
+  ArmPkg/Library/ArmArchTimerLibEx/ArmArchTimerLibEx.inf
+
 [Components.AARCH64]
   ArmPkg/Drivers/ArmPsciMpServicesDxe/ArmPsciMpServicesDxe.inf
   ArmPkg/Drivers/MmCommunicationDxe/MmCommunication.inf
