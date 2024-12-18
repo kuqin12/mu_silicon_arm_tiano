@@ -203,6 +203,8 @@
   # MU_CHANGE [END]
   ArmPkg/Drivers/MmCommunicationPei/MmCommunicationPei.inf
 
+  ArmPkg/Library/ArmArchTimerLibEx/ArmArchTimerLibEx.inf
+
 [Components.common.MM_CORE_STANALONE]
   ArmPkg/Library/ArmStandaloneMmCoreEntryPoint/ArmStandaloneMmCoreEntryPoint.inf
 
