@@ -204,6 +204,7 @@
   ArmPkg/Library/ArmArchTimerLibEx/ArmArchTimerLibEx.inf
   ArmPkg/Library/NotificationServiceLib/NotificationServiceLib.inf
   ArmPkg/Library/TestServiceLib/TestServiceLib.inf
+  ArmPkg/Library/TpmServiceLib/TpmServiceLib.inf
 
 [Components.AARCH64]
   ArmPkg/Drivers/ArmPsciMpServicesDxe/ArmPsciMpServicesDxe.inf
