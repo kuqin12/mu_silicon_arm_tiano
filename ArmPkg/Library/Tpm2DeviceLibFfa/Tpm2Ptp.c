@@ -212,7 +212,7 @@ PtpCrbTpmCommand (
              0
              );
   if (EFI_ERROR (Status)) {
-    goto GoIdle_Exit;
+    goto Exit;
   }
 
   //
@@ -237,7 +237,7 @@ PtpCrbTpmCommand (
   if (SwapBytes16 (Data16) == TPM_ST_RSP_COMMAND) {
     DEBUG ((DEBUG_ERROR, "TPM2: TPM_ST_RSP error - %x\n", TPM_ST_RSP_COMMAND));
     Status = EFI_UNSUPPORTED;
-    goto GoIdle_Exit;
+    goto Exit;
   }
 
   CopyMem (&Data32, (BufferOut + 2), sizeof (UINT32));
@@ -247,7 +247,7 @@ PtpCrbTpmCommand (
     // Command completed, but buffer is not enough
     //
     Status = EFI_BUFFER_TOO_SMALL;
-    goto GoIdle_Exit;
+    goto Exit;
   }
 
   *SizeOut = TpmOutSize;
@@ -262,16 +262,7 @@ PtpCrbTpmCommand (
   DumpTpmOutputBlock (TpmOutSize, BufferOut);
   DEBUG_CODE_END ();
 
-  //
-  // Do not wait for state transition for TIMEOUT_C
-  // This function will try to wait 2 TIMEOUT_C at the beginning in next call.
-  //
-GoIdle_Exit:
-
-  //
-  //  Return to Idle state by setting TPM_CRB_CTRL_STS_x.Status.goIdle to 1.
-  //
-  MmioWrite32 ((UINTN)&CrbReg->CrbControlRequest, PTP_CRB_CONTROL_AREA_REQUEST_GO_IDLE);
+Exit:
 
   return Status;
 }
