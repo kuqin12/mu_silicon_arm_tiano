@@ -203,6 +203,7 @@
   # MU_CHANGE [END]
 
   ArmPkg/Library/NotificationServiceLib/NotificationServiceLib.inf
+  ArmPkg/Library/TestServiceLib/TestServiceLib.inf
   ArmPkg/Library/ArmStandaloneMmCoreEntryPoint/ArmStandaloneMmCoreEntryPoint.inf
 
 # [Components.common.MM_STANDALONE] MU_CHANGE
