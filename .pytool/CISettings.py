@@ -189,7 +189,7 @@ class Settings(CiSetupSettingsManager, CiBuildSettingsManager, UpdateSettingsMan
             {
                 "Path": "Common/MU_TIANO",
                 "Url": "https://github.com/microsoft/mu_tiano_plus.git",
-                "Branch": "dev/202405"
+                "Branch": "feature/ffa_enablement"
             },
             {
                 "Path": "MU_BASECORE",
