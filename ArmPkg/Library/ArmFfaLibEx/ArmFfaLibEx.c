@@ -131,56 +131,6 @@ FfaUnpackDirectMessage (
 }
 
 /*
- * Packs the content of the ffa_direct_msg into a Request message.
- */
-STATIC
-VOID
-FfaPackDirectMessage (
-  OUT ARM_SXC_ARGS       *Request,
-  IN DIRECT_MSG_ARGS_EX  *Message
-  )
-{
-  EFI_GUID  ServiceGuid;
-
-  Request->Arg0 = Message->FunctionId;
-
-  /* NOTE: There is a DIRECT_RESP define in ffa_api_defines.h, this may need to be updated
-   *       in the future if the defines differ, for now they are identical. */
-  Request->Arg1 = ((UINT32)Message->SourceId << 16) | Message->DestinationId;
-
-  if ((Message->FunctionId == ARM_FID_FFA_MSG_SEND_DIRECT_REQ_AARCH32) ||
-      (Message->FunctionId == ARM_FID_FFA_MSG_SEND_DIRECT_REQ_AARCH64) ||
-      (Message->FunctionId == ARM_FID_FFA_MSG_SEND_DIRECT_RESP_AARCH32) ||
-      (Message->FunctionId == ARM_FID_FFA_MSG_SEND_DIRECT_RESP_AARCH64))
-  {
-    Request->Arg2 = Message->Arg0;
-    Request->Arg3 = Message->Arg1;
-    Request->Arg4 = Message->Arg2;
-    Request->Arg5 = Message->Arg3;
-    Request->Arg6 = Message->Arg4;
-    Request->Arg7 = Message->Arg5;
-  } else {
-    CopyMem (&ServiceGuid, &Message->ServiceGuid, sizeof (EFI_GUID));
-    FfaPrepareGuid (&ServiceGuid);
-    CopyMem (&Request->Arg2, &ServiceGuid, sizeof (EFI_GUID));
-    Request->Arg4  = Message->Arg0;
-    Request->Arg5  = Message->Arg1;
-    Request->Arg6  = Message->Arg2;
-    Request->Arg7  = Message->Arg3;
-    Request->Arg8  = Message->Arg4;
-    Request->Arg9  = Message->Arg5;
-    Request->Arg10 = Message->Arg6;
-    Request->Arg11 = Message->Arg7;
-    Request->Arg12 = Message->Arg8;
-    Request->Arg13 = Message->Arg9;
-    Request->Arg14 = Message->Arg10;
-    Request->Arg15 = Message->Arg11;
-    Request->Arg16 = Message->Arg12;
-    Request->Arg17 = Message->Arg13;
-  }
-}
-
-/*
  * The end of the interrupt handler is indicated by an FFA_MSG_WAIT call.
  */
 STATIC
@@ -230,49 +180,6 @@ FfaMessageWait (
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
-EFIAPI
-FfaMessageSendDirectReq2 (
-  IN      UINT16              DestPartId,
-  IN      EFI_GUID            *ServiceGuid OPTIONAL,
-  IN OUT  DIRECT_MSG_ARGS_EX  *ImpDefArgs
-  )
-{
-  ARM_SXC_ARGS  InputArgs = { 0 };
-  ARM_SXC_ARGS  Result    = { 0 };
-
-  ImpDefArgs->FunctionId    = ARM_FID_FFA_MSG_SEND_DIRECT_REQ2;
-  ImpDefArgs->SourceId      = gPartId;
-  ImpDefArgs->DestinationId = DestPartId;
-  if (ServiceGuid != NULL) {
-    CopyMem (&(ImpDefArgs->ServiceGuid), ServiceGuid, sizeof (EFI_GUID));
-  } else {
-    ZeroMem (&(ImpDefArgs->ServiceGuid), sizeof (EFI_GUID));
-  }
-
-  FfaPackDirectMessage (&InputArgs, ImpDefArgs);
-
-  ArmCallSxc (&InputArgs, &Result);
-
-  while (Result.Arg0 == ARM_FID_FFA_INTERRUPT) {
-    SecurePartitionInterruptHandler ((UINT32)Result.Arg2);
-    FfaReturnFromInterrupt (&Result);
-  }
-
-  if (Result.Arg0 == ARM_FID_FFA_ERROR) {
-    return FfaStatusToEfiStatus (Result.Arg2);
-  } else if (Result.Arg0 == ARM_FID_FFA_MSG_SEND_DIRECT_RESP2) {
-    FfaUnpackDirectMessage (&Result, ImpDefArgs);
-  } else {
-    ASSERT (Result.Arg0 == ARM_FID_FFA_SUCCESS_AARCH32);
-    *ImpDefArgs = (DIRECT_MSG_ARGS_EX) {
-      .FunctionId = Result.Arg0
-    };
-  }
-
-  return EFI_SUCCESS;
-}
-
 STATIC
 EFI_STATUS
 FfaMessageSendDirectResp (
@@ -284,8 +191,39 @@ FfaMessageSendDirectResp (
   ARM_SXC_ARGS  InputArgs = { 0 };
   ARM_SXC_ARGS  Result    = { 0 };
 
-  Request->FunctionId = FunctionId;
-  FfaPackDirectMessage (&InputArgs, Request);
+  InputArgs.Arg0 = FunctionId;
+
+  /* NOTE: There is a DIRECT_RESP define in ffa_api_defines.h, this may need to be updated
+   *       in the future if the defines differ, for now they are identical. */
+  InputArgs.Arg1 = PACK_PARTITION_ID_INFO (Request->SourceId, Request->DestinationId);
+
+  if ((Request->FunctionId == ARM_FID_FFA_MSG_SEND_DIRECT_RESP_AARCH32) ||
+      (Request->FunctionId == ARM_FID_FFA_MSG_SEND_DIRECT_RESP_AARCH64))
+  {
+    InputArgs.Arg2 = Request->Arg0;
+    InputArgs.Arg3 = Request->Arg1;
+    InputArgs.Arg4 = Request->Arg2;
+    InputArgs.Arg5 = Request->Arg3;
+    InputArgs.Arg6 = Request->Arg4;
+    InputArgs.Arg7 = Request->Arg5;
+  } else {
+    CopyMem (&InputArgs.Arg2, &Request->ServiceGuid, sizeof (EFI_GUID));
+    FfaPrepareGuid ((EFI_GUID *)&InputArgs.Arg2);
+    InputArgs.Arg4  = Request->Arg0;
+    InputArgs.Arg5  = Request->Arg1;
+    InputArgs.Arg6  = Request->Arg2;
+    InputArgs.Arg7  = Request->Arg3;
+    InputArgs.Arg8  = Request->Arg4;
+    InputArgs.Arg9  = Request->Arg5;
+    InputArgs.Arg10 = Request->Arg6;
+    InputArgs.Arg11 = Request->Arg7;
+    InputArgs.Arg12 = Request->Arg8;
+    InputArgs.Arg13 = Request->Arg9;
+    InputArgs.Arg14 = Request->Arg10;
+    InputArgs.Arg15 = Request->Arg11;
+    InputArgs.Arg16 = Request->Arg12;
+    InputArgs.Arg17 = Request->Arg13;
+  }
 
   ArmCallSxc (&InputArgs, &Result);
 

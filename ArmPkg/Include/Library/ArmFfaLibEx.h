@@ -99,27 +99,6 @@ FfaMessageWait (
 
 /**
  * @brief      Sends a 32 bit partition message in parameter registers as a
- *             request and blocks until the response is available.
- * @note       The ffa_interrupt_handler function can be called during the
- *             execution of this function
- *
- * @param[in]  source            Source endpoint ID
- * @param[in]  dest              Destination endpoint ID
- * @param[in]  a0,a1,a2,a3,a4    Implementation defined message values
- * @param[out] msg               The response message
- *
- * @return     The FF-A error status code
- */
-EFI_STATUS
-EFIAPI
-FfaMessageSendDirectReq2 (
-  IN      UINT16              DestPartId,
-  IN      EFI_GUID            *ServiceGuid OPTIONAL,
-  IN OUT  DIRECT_MSG_ARGS_EX  *ImpDefArgs
-  );
-
-/**
- * @brief      Sends a 32 bit partition message in parameter registers as a
  *             response and blocks until the response is available.
  * @note       The ffa_interrupt_handler function can be called during the
  *             execution of this function
