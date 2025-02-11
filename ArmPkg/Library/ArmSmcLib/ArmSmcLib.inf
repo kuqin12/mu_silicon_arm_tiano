@@ -23,6 +23,9 @@
 [Sources]
   ArmSmc.c
 
+[FixedPcd]
+  gArmTokenSpaceGuid.PcdSxcUse18Registers
+
 [Packages]
   MdePkg/MdePkg.dec
   ArmPkg/ArmPkg.dec

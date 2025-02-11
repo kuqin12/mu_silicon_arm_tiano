@@ -10,6 +10,8 @@
 #ifndef ARM_SMC_LIB_H_
 #define ARM_SMC_LIB_H_
 
+#include <Library/PcdLib.h>
+
 /**
  * The size of the SMC arguments are different between AArch64 and AArch32.
  * The native size is used for the arguments.
@@ -23,7 +25,6 @@ typedef struct {
   UINTN    Arg5;
   UINTN    Arg6;
   UINTN    Arg7;
-#if PcdFeatureGet (PcdSxcUse18Registers)
   UINTN    Arg8;
   UINTN    Arg9;
   UINTN    Arg10;
@@ -34,7 +35,6 @@ typedef struct {
   UINTN    Arg15;
   UINTN    Arg16;
   UINTN    Arg17;
-#endif
 } ARM_SMC_ARGS;
 
 /**
