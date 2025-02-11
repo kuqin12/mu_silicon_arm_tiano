@@ -45,7 +45,6 @@ typedef struct DirectMsgArgs {
   /// Implementation define argument 4, this will be set to/from x7(v1) or x8(v2)
   UINTN    Arg4;
 
-#if PcdFeatureGet (PcdSxcUse18Registers)
   /// Implementation define argument 5, this will be set to/from x9(v2)
   UINTN    Arg5;
 
@@ -72,7 +71,6 @@ typedef struct DirectMsgArgs {
 
   /// Implementation define argument 13, this will be set to/from x17(v2)
   UINTN    Arg13;
-#endif
 } DIRECT_MSG_ARGS;
 
 /**

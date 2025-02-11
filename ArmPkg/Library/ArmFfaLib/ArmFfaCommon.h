@@ -29,7 +29,6 @@ typedef struct ArmFfaArgs {
   UINTN    Arg5;
   UINTN    Arg6;
   UINTN    Arg7;
-#if PcdFeatureGet (PcdSxcUse18Registers)
   UINTN    Arg8;
   UINTN    Arg9;
   UINTN    Arg10;
@@ -40,7 +39,6 @@ typedef struct ArmFfaArgs {
   UINTN    Arg15;
   UINTN    Arg16;
   UINTN    Arg17;
-#endif
 } ARM_FFA_ARGS;
 
 extern BOOLEAN  gFfaSupported;
