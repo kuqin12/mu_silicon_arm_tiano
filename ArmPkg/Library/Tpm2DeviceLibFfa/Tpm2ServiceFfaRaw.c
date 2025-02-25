@@ -35,7 +35,6 @@ UINT32  mFfaTpm2PartitionId = MAX_UINT32;
   @retval EFI_SUCCESS    The entry point is executed successfully.
 **/
 EFI_STATUS
-EFIAPI
 TranslateTpmReturnStatus (
   UINTN  TpmReturnStatus
   )
