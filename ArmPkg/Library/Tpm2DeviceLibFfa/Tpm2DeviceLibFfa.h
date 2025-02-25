@@ -26,36 +26,28 @@
 
   This module is only to be used during boot. This will not persist after exit boot services is called.
 
- Copyright (c) 2021, Microsoft Corporation. All rights reserved.<BR>
- This program and the accompanying materials
- are licensed and made available under the terms and conditions of the BSD License
- which accompanies this distribution. The full text of the license may be found at
- http://opensource.org/licenses/bsd-license.php
- THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
- WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+  Copyright (c), Microsoft Corporation.
 
+  SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
-#ifndef _TPM2_DEVICE_LIB_SMC_H_
-#define _TPM2_DEVICE_LIB_SMC_H_
-
-#include <Library/ArmSmcLib.h>
-#include <Library/ArmSvcLib.h>
+#ifndef TPM2_DEVICE_LIB_FFA_H_
+#define TPM2_DEVICE_LIB_FFA_H_
 
 /**
   Check the return status from the FF-A call and returns EFI_STATUS
 
-  @param EFI_LOAD_ERROR  FF-A status code returned in x0
+  @param FfaReturnStatus  FF-A return status
 
   @retval EFI_SUCCESS    The entry point is executed successfully.
+  @retval Others         Other corresponding EFI_STATUS.
 **/
 EFI_STATUS
-EFIAPI
 TranslateFfaReturnStatus (
   UINTN  FfaReturnStatus
   );
 
-/*
+/**
   This function is used to get the TPM interface version.
 
   @param[out] Version - Supplies the pointer to the TPM interface version.
@@ -65,13 +57,13 @@ TranslateFfaReturnStatus (
   @retval EFI_INVALID_PARAMETER The TPM command buffer is NULL or the TPM command
                                 buffer size is 0.
   @retval EFI_DEVICE_ERROR      An error occurred in communication with the TPM.
-*/
+**/
 EFI_STATUS
 Tpm2GetInterfaceVersion (
   OUT UINT32  *Version
   );
 
-/*
+/**
   This function is used to get the TPM feature information.
 
   @param[out] FeatureInfo - Supplies the pointer to the feature information.
@@ -81,18 +73,38 @@ Tpm2GetInterfaceVersion (
   @retval EFI_INVALID_PARAMETER The TPM command buffer is NULL or the TPM command
                                 buffer size is 0.
   @retval EFI_DEVICE_ERROR      An error occurred in communication with the TPM.
-*/
+**/
 EFI_STATUS
 Tpm2GetFeatureInfo (
   OUT UINT32  *FeatureInfo
   );
 
+/**
+  This service enables the sending of commands to the TPM2.
+
+  @param[in]  FuncQualifier          Function qualifier.
+  @param[in]  LocalityQualifier      Locality qualifier.
+
+  @retval EFI_SUCCESS           The command byte stream was successfully sent to the device and a response was successfully received.
+  @retval EFI_DEVICE_ERROR      The command was not successfully sent to the device or a response was not successfully received from the device.
+  @retval EFI_BUFFER_TOO_SMALL  The output parameter block is too small.
+**/
 EFI_STATUS
 Tpm2ServiceStart (
   IN UINT64  FuncQualifier,
   IN UINT64  LocalityQualifier
   );
 
+/**
+  Register TPM2 device notification.
+
+  @param[in] NotificationTypeQualifier  Notification type qualifier.
+  @param[in] vCpuId                     vCPU ID.
+  @param[in] NotificationId             Bitmap ID for the notification.
+
+  @retval EFI_SUCCESS  The command was successfully sent to the device and a response was successfully received.
+  @retval Others       Some error occurred in communication with the device.
+**/
 EFI_STATUS
 Tpm2RegisterNotification (
   IN BOOLEAN  NotificationTypeQualifier,
@@ -100,11 +112,23 @@ Tpm2RegisterNotification (
   IN UINT64   NotificationId
   );
 
+/**
+  Unregister TPM2 device notification.
+
+  @retval EFI_SUCCESS  The command was successfully sent to the device and a response was successfully received.
+  @retval Others       Some error occurred in communication with the device.
+**/
 EFI_STATUS
 Tpm2UnregisterNotification (
   VOID
   );
 
+/**
+  Issue a finished notification command to the TPM service over FF-A.
+
+  @retval EFI_SUCCESS  The command was successfully sent to the device and a response was successfully received.
+  @retval Others       Some error occurred in communication with the device.
+**/
 EFI_STATUS
 Tpm2FinishNotified (
   VOID
@@ -157,7 +181,6 @@ Tpm2GetIdleByPass (
   @retval EFI_BUFFER_TOO_SMALL   The output parameter block is too small.
 **/
 EFI_STATUS
-EFIAPI
 FfaTpm2SubmitCommand (
   IN UINT32      InputParameterBlockSize,
   IN UINT8       *InputParameterBlock,
@@ -166,14 +189,13 @@ FfaTpm2SubmitCommand (
   );
 
 /**
-  This service requests use TPM2.
+  This service requests use TPM2 over FF-A.
 
   @retval EFI_SUCCESS      Get the control of TPM2 chip.
   @retval EFI_NOT_FOUND    TPM2 not found.
   @retval EFI_DEVICE_ERROR Unexpected device behavior.
 **/
 EFI_STATUS
-EFIAPI
 FfaTpm2RequestUseTpm (
   VOID
   );

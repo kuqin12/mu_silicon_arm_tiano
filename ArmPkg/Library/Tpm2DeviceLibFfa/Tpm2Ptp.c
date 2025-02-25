@@ -361,7 +361,6 @@ DumpPtpInfo (
   @retval EFI_BUFFER_TOO_SMALL   The output parameter block is too small.
 **/
 EFI_STATUS
-EFIAPI
 FfaTpm2SubmitCommand (
   IN UINT32      InputParameterBlockSize,
   IN UINT8       *InputParameterBlock,
@@ -379,14 +378,13 @@ FfaTpm2SubmitCommand (
 }
 
 /**
-  This service requests use TPM2.
+  This service requests use TPM2 over FF-A.
 
   @retval EFI_SUCCESS      Get the control of TPM2 chip.
   @retval EFI_NOT_FOUND    TPM2 not found.
   @retval EFI_DEVICE_ERROR Unexpected device behavior.
 **/
 EFI_STATUS
-EFIAPI
 FfaTpm2RequestUseTpm (
   VOID
   )

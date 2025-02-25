@@ -5,14 +5,9 @@
   The implementation is only supporting the Command Response Buffer (CRB)
   for sharing data with the TPM.
 
-Copyright (c) 2021, Microsoft Corporation. All rights reserved. <BR>
-This program and the accompanying materials
-are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+  Copyright (c), Microsoft Corporation.
 
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
@@ -88,7 +83,7 @@ TranslateTpmReturnStatus (
   return Status;
 }
 
-/*
+/**
   This function is used to get the TPM service partition id.
 
   @param[out] PartitionId - Supplies the pointer to the TPM service partition id.
@@ -98,7 +93,7 @@ TranslateTpmReturnStatus (
   @retval EFI_INVALID_PARAMETER The TPM command buffer is NULL or the TPM command
                                 buffer size is 0.
   @retval EFI_DEVICE_ERROR      An error occurred in communication with the TPM.
-*/
+**/
 EFI_STATUS
 GetTpmServicePartitionId (
   OUT UINT32  *PartitionId
@@ -182,6 +177,17 @@ Exit:
   return Status;
 }
 
+/**
+  This function is used to get the TPM interface version.
+
+  @param[out] Version - Supplies the pointer to the TPM interface version.
+
+  @retval EFI_SUCCESS           The TPM command was successfully sent to the TPM
+                                and the response was copied to the Output buffer.
+  @retval EFI_INVALID_PARAMETER The TPM command buffer is NULL or the TPM command
+                                buffer size is 0.
+  @retval EFI_DEVICE_ERROR      An error occurred in communication with the TPM.
+**/
 EFI_STATUS
 Tpm2GetInterfaceVersion (
   OUT UINT32  *Version
@@ -217,7 +223,7 @@ Exit:
   return Status;
 }
 
-/*
+/**
   This function is used to get the TPM feature information.
 
   @param[out] FeatureInfo - Supplies the pointer to the feature information.
@@ -227,7 +233,7 @@ Exit:
   @retval EFI_INVALID_PARAMETER The TPM command buffer is NULL or the TPM command
                                 buffer size is 0.
   @retval EFI_DEVICE_ERROR      An error occurred in communication with the TPM.
-*/
+**/
 EFI_STATUS
 Tpm2GetFeatureInfo (
   OUT UINT32  *FeatureInfo
@@ -260,6 +266,16 @@ Exit:
   return Status;
 }
 
+/**
+  This service enables the sending of commands to the TPM2.
+
+  @param[in]  FuncQualifier          Function qualifier.
+  @param[in]  LocalityQualifier      Locality qualifier.
+
+  @retval EFI_SUCCESS           The command byte stream was successfully sent to the device and a response was successfully received.
+  @retval EFI_DEVICE_ERROR      The command was not successfully sent to the device or a response was not successfully received from the device.
+  @retval EFI_BUFFER_TOO_SMALL  The output parameter block is too small.
+**/
 EFI_STATUS
 Tpm2ServiceStart (
   IN UINT64  FuncQualifier,
@@ -289,6 +305,16 @@ Exit:
   return Status;
 }
 
+/**
+  Register TPM2 device notification.
+
+  @param[in] NotificationTypeQualifier  Notification type qualifier.
+  @param[in] vCpuId                     vCPU ID.
+  @param[in] NotificationId             Bitmap ID for the notification.
+
+  @retval EFI_SUCCESS  The command was successfully sent to the device and a response was successfully received.
+  @retval Others       Some error occurred in communication with the device.
+**/
 EFI_STATUS
 Tpm2RegisterNotification (
   IN BOOLEAN  NotificationTypeQualifier,
@@ -319,6 +345,12 @@ Exit:
   return Status;
 }
 
+/**
+  Unregister TPM2 device notification.
+
+  @retval EFI_SUCCESS  The command was successfully sent to the device and a response was successfully received.
+  @retval Others       Some error occurred in communication with the device.
+**/
 EFI_STATUS
 Tpm2UnregisterNotification (
   VOID
@@ -345,6 +377,12 @@ Exit:
   return Status;
 }
 
+/**
+  Issue a finished notification command to the TPM service over FF-A.
+
+  @retval EFI_SUCCESS  The command was successfully sent to the device and a response was successfully received.
+  @retval Others       Some error occurred in communication with the device.
+**/
 EFI_STATUS
 Tpm2FinishNotified (
   VOID

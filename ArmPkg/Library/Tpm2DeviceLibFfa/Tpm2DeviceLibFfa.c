@@ -5,15 +5,9 @@
   The implementation is only supporting the Command Response Buffer (CRB)
   for sharing data with the TPM.
 
-Copyright (c) 2021, Microsoft Corporation. All rights reserved. <BR>
-This program and the accompanying materials
-are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+  Copyright (c), Microsoft Corporation.
 
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
+  SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include <IndustryStandard/ArmFfaSvc.h>
@@ -103,12 +97,12 @@ Tpm2RegisterTpm2DeviceLib (
 /**
   Check the return status from the FF-A call and returns EFI_STATUS
 
-  @param EFI_LOAD_ERROR  FF-A status code returned in x0
+  @param FfaReturnStatus  FF-A return status
 
   @retval EFI_SUCCESS    The entry point is executed successfully.
+  @retval Others         Other corresponding EFI_STATUS.
 **/
 EFI_STATUS
-EFIAPI
 TranslateFfaReturnStatus (
   UINTN  FfaReturnStatus
   )
@@ -170,7 +164,9 @@ TranslateFfaReturnStatus (
 /**
   Check that we have an address for the CRB
 
-  @retval EFI_SUCCESS    The entry point is executed successfully.
+  @retval EFI_SUCCESS      The entry point is executed successfully.
+  @retval EFI_NOT_STARTED  The TPM base address is not set up.
+  @retval EFI_UNSUPPORTED  The TPM interface type is not supported.
 **/
 EFI_STATUS
 EFIAPI
