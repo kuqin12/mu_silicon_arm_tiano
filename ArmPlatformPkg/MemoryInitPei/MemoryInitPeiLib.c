@@ -119,55 +119,15 @@ MemoryPeim (
     MmBufferBase = PcdGet64 (PcdMmBufferBase);
     MmBufferTop  = MmBufferBase + PcdGet64 (PcdMmBufferSize);
 
-    // But pay attention to the potential overlap with the mm communication buffer
-    if ((MmBufferBase >= SystemMemoryBase) && (MmBufferBase < SystemMemoryTop)) {
-      // The mm communication buffer is in the system memory range
-      if (MmBufferBase > SystemMemoryBase) {
-        // There is a gap between the start of system memory and the mm communication buffer
-        BuildResourceDescriptorV2 (
-          EFI_RESOURCE_SYSTEM_MEMORY,
-          ResourceAttributes,
-          SystemMemoryBase,
-          MmBufferBase - SystemMemoryBase,
-          EFI_MEMORY_WB,
-          NULL
-          );
-      }
-
-      if (MmBufferTop < SystemMemoryTop) {
-        // There is a gap between the end of mm communication buffer and the end of system memory
-        BuildResourceDescriptorV2 (
-          EFI_RESOURCE_SYSTEM_MEMORY,
-          ResourceAttributes,
-          MmBufferTop,
-          SystemMemoryTop -
-          MmBufferTop,
-          EFI_MEMORY_WB,
-          NULL
-          );
-      }
-    } else if ((MmBufferTop > SystemMemoryBase) && (MmBufferTop <= SystemMemoryTop)) {
-      // The end of mm communication buffer is in the system memory range
-      BuildResourceDescriptorV2 (
-        EFI_RESOURCE_SYSTEM_MEMORY,
-        ResourceAttributes,
-        MmBufferTop,
-        SystemMemoryTop -
-        MmBufferTop,
-        EFI_MEMORY_WB,
-        NULL
-        );
-    } else {
-      // The mm communication buffer is out of the system memory range
-      BuildResourceDescriptorV2 (
-        EFI_RESOURCE_SYSTEM_MEMORY,
-        ResourceAttributes,
-        SystemMemoryBase,
-        PcdGet64 (PcdSystemMemorySize),
-        EFI_MEMORY_WB,
-        NULL
-        );
-    }
+    // The mm communication buffer is out of the system memory range
+    BuildResourceDescriptorV2 (
+      EFI_RESOURCE_SYSTEM_MEMORY,
+      ResourceAttributes,
+      SystemMemoryBase,
+      PcdGet64 (PcdSystemMemorySize),
+      EFI_MEMORY_WB,
+      NULL
+      );
 
     // MU_CHANGE END
   }
