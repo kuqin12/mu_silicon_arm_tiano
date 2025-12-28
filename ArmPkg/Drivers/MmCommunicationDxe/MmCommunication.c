@@ -629,11 +629,12 @@ MmCommunication2Initialize (
                   EFI_MEMORY_XP |
                   EFI_MEMORY_RUNTIME
                   );
-  if (EFI_ERROR (Status)) {
+  if (EFI_ERROR (Status) && (Status != EFI_ACCESS_DENIED)) {
     DEBUG ((
       DEBUG_ERROR,
       "MmCommunicateInitialize: "
-      "Failed to add MM-NS Buffer Memory Space\n"
+      "Failed to add MM-NS Buffer Memory Space - %r\n",
+      Status
       ));
     goto ReturnErrorStatus;
   }
